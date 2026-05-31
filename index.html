@@ -675,9 +675,19 @@
 
     async function executeDelete() {
         if (!deleteTargetId) return;
+        
+        // SIMPAN ID SEMENTARA: Karena hideConfirmModal() di bawah ini akan me-reset deleteTargetId menjadi null
+        let targetId = deleteTargetId; 
+        
         hideConfirmModal();
         
-        let res = await apiCall({ action: 'deleteTransaksi', id_transaksi: deleteTargetId, id_user_requesting: currentUser.id_user, role: currentUser.role });
+        // Gunakan targetId yang sudah disimpan dengan aman
+        let res = await apiCall({ 
+            action: 'deleteTransaksi', 
+            id_transaksi: targetId, 
+            id_user_requesting: currentUser.id_user, 
+            role: currentUser.role 
+        });
 
         if (res && res.status === 'success') {
             showToast("Berhasil: " + res.message);
