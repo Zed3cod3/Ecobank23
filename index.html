@@ -3,612 +3,741 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eco Bank - Sistem Informasi Pengelolaan Sampah</title>
-    <!-- Tailwind CSS -->
+    <title>Eco Bank - SMPN 23 Balikpapan</title>
+    <!-- TAIWIND CSS & ICONS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- LIBRARIES: PDF & CHART -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- HTML2PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
+    <!-- FIREBASE LIBRARIES (VERSI STABIL) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .bg-gradient-hero { background: linear-gradient(to bottom, #d1fae5 0%, #ffffff 100%); }
-        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
-        .loader-spinner {
-            border: 4px solid rgba(16, 185, 129, 0.2);
-            border-top: 4px solid #10b981;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; }
+        .hidden-force { display: none !important; }
+        .glass-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.4); }
+        ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #f1f1f1; } ::-webkit-scrollbar-thumb { background: #34d399; border-radius: 10px; } ::-webkit-scrollbar-thumb:hover { background: #059669; }
+        .hover-card { transition: all 0.3s ease; } .hover-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.2); border-color: #34d399; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-gray-50 relative overflow-x-hidden">
 
-    <!-- OVERLAY LOADING -->
-    <div id="loadingOverlay" class="fixed inset-0 bg-white/80 z-50 flex flex-col justify-center items-center backdrop-blur-sm">
-        <div class="loader-spinner mb-4"></div>
-        <h3 class="text-xl font-bold text-emerald-700 animate-pulse">Memproses Data...</h3>
-        <p class="text-gray-500 text-sm mt-2">Menghubungkan ke Database</p>
+    <!-- LOADING OVERLAY -->
+    <div id="loading-overlay" class="fixed inset-0 bg-emerald-900/40 backdrop-blur-sm z-[999999] flex flex-col items-center justify-center">
+        <div class="bg-white p-6 rounded-2xl shadow-xl border border-emerald-100 flex flex-col items-center gap-4">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-100 border-t-emerald-400"></div>
+            <p class="text-emerald-800 font-bold animate-pulse text-sm" id="loading-text">Memproses Data...</p>
+        </div>
     </div>
 
-    <!-- MODAL LOGIN -->
-    <div id="loginModal" class="fixed inset-0 bg-black/60 z-50 hidden flex justify-center items-center backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 transform scale-95 transition-transform" id="loginBox">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-emerald-600">Masuk Sistem</h2>
-                <button id="closeLoginBtn" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
-            </div>
-            <div class="space-y-4">
+    <!-- NAVBAR -->
+    <nav id="navbar-landing" class="fixed top-0 left-0 w-full glass-card z-50 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <img src="https://i.ibb.co.com/mV7Qr7Fw/logo.png" alt="Logo SMPN 23" class="h-12 w-12 object-contain drop-shadow-sm">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                    <input type="text" id="username" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                    <h1 class="font-black text-emerald-950 leading-none text-xl tracking-tight">ECO BANK</h1>
+                    <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">SMPN 23 Balikpapan</p>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                    <input type="password" id="password" placeholder="Masukkan password" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
-                </div>
-                <div id="loginError" class="text-red-500 text-sm hidden font-medium text-center">Username atau Password salah!</div>
-                <button id="submitLoginBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow-lg transition-all mt-2">Masuk</button>
+            </div>
+            <div>
+                <button id="btn-nav-login" onclick="showLoginModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-md shadow-emerald-500/30 transition-all flex items-center gap-2"><i class="fa-solid fa-right-to-bracket"></i> Masuk Sistem</button>
+                <button id="btn-nav-dashboard" onclick="navigate('auto')" class="hidden-force bg-teal-600 hover:bg-teal-700 text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-md shadow-teal-500/30 transition-all items-center gap-2"><i class="fa-solid fa-gauge-high"></i> Dashboard</button>
             </div>
         </div>
-    </div>
+    </nav>
 
-    <!-- MODAL KONFIRMASI HAPUS -->
-    <div id="confirmModal" class="fixed inset-0 bg-black/60 z-50 hidden flex justify-center items-center backdrop-blur-sm">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4 text-center">
-            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+    <!-- LANDING PAGE -->
+    <div id="page-landing" class="min-h-screen pb-0 relative block">
+        <div class="relative w-full pt-32 pb-16 flex flex-col items-center overflow-hidden bg-gradient-to-b from-emerald-100/80 via-emerald-50/30 to-transparent">
+            <div class="relative z-20 max-w-5xl mx-auto px-6 w-full text-center space-y-6">
+                <p class="text-sm font-bold text-emerald-600 tracking-widest uppercase mb-2"><i class="fa-solid fa-leaf mr-2"></i>Sistem Informasi Lingkungan</p>
+                <h1 class="text-5xl md:text-7xl font-black text-emerald-950 leading-[1.1] tracking-tight">Eco <span class="text-emerald-500">Bank</span></h1>
+                <div class="inline-block bg-gradient-to-r from-amber-400 to-yellow-500 text-emerald-950 font-black px-6 py-2 rounded-lg transform -skew-x-12 shadow-md mt-2">✨ SPENDUGA HEBAT</div>
+                <p class="text-gray-600 text-lg md:text-xl leading-relaxed font-medium max-w-4xl mx-auto mt-6">Platform Pengelolaan Sampah Terpadu SMPN 23 Balikpapan. Kami hadir mewujudkan lingkungan sekolah yang bersih dan sehat melalui digitalisasi tata kelola sampah. Sistem ini memudahkan pencatatan arsip secara transparan, sekaligus menanamkan karakter peduli alam kepada seluruh siswa sejak dini.</p>
             </div>
-            <h3 class="text-lg font-bold text-gray-900 mb-2">Hapus Data?</h3>
-            <p class="text-gray-500 text-sm mb-6">Data transaksi ini akan dihapus secara permanen dan saldo akan dikurangi.</p>
-            <div class="flex gap-3 justify-center">
-                <button id="cancelDeleteBtn" class="px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition">Batal</button>
-                <button id="confirmDeleteBtn" class="px-4 py-2 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 transition shadow-lg">Ya, Hapus</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ==================== LANDING PAGE ==================== -->
-    <div id="landingPage" class="block">
-        <!-- Hero Section -->
-        <div class="bg-gradient-hero pt-16">
-            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center pb-12">
-                <div class="inline-block p-3 bg-emerald-100 rounded-full text-emerald-600 mb-4">
-                    <i class="fas fa-leaf text-3xl"></i>
-                </div>
-                <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight mb-4">Eco Bank</h1>
-                <p class="mt-4 text-lg md:text-xl text-gray-600 mb-8 max-w-3xl mx-auto">Mewujudkan lingkungan sekolah yang bersih, sehat, dan bernilai ekonomis melalui pengelolaan sampah digital yang terintegrasi untuk masa depan yang lebih hijau.</p>
-                <div class="flex justify-center">
-                    <button id="openLoginBtn" class="bg-emerald-600 text-white px-8 py-3 rounded-full font-bold text-lg hover:bg-emerald-700 transition shadow-xl flex items-center gap-2">
-                        <i class="fas fa-sign-in-alt"></i> Masuk Sistem
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Foto Full Width Tanpa Efek -->
-            <div class="w-full">
-                <img src="https://images.unsplash.com/photo-1525625293386-3f8f99389edd?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" alt="Gedung Sekolah" class="w-full h-auto object-cover">
+            <div class="relative w-full mt-16 px-0 md:px-6">
+                <img src="https://i.ibb.co.com/LhD252ZZ/11.jpg" alt="SMPN 23 Balikpapan" class="w-full h-auto max-h-[600px] object-cover md:rounded-3xl shadow-2xl block">
             </div>
         </div>
 
-        <!-- Statistik Section (Chart & Leaderboard) -->
-        <div class="py-16 bg-white">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="text-center mb-12">
-                    <h2 class="text-3xl font-bold text-gray-900">Statistik Pengelolaan</h2>
-                    <div class="w-24 h-1 bg-emerald-500 mx-auto mt-4 rounded-full"></div>
+        <div id="section-info" class="max-w-7xl mx-auto px-6 py-10 relative z-10">
+            <div class="mb-24">
+                <div class="text-center mb-12"><h2 class="text-3xl font-black text-emerald-950 mb-3">Visi Misi Adiwiyata</h2><p class="text-gray-500 font-medium">Nilai-nilai luhur <span class="font-bold text-emerald-600">SPENDUGA HEBAT</span> dalam pelestarian lingkungan.</p></div>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                    <div class="glass-card p-6 rounded-3xl hover-card text-center"><div class="h-14 w-14 mx-auto bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-inner"><i class="fa-solid fa-hand-holding-heart"></i></div><h3 class="text-lg font-bold text-emerald-900 mb-2">Honest</h3><p class="text-xs text-gray-500 leading-relaxed">Jujur dan transparan dalam tindakan penimbangan sampah.</p></div>
+                    <div class="glass-card p-6 rounded-3xl hover-card text-center"><div class="h-14 w-14 mx-auto bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-inner"><i class="fa-solid fa-star"></i></div><h3 class="text-lg font-bold text-emerald-900 mb-2">Excellent</h3><p class="text-xs text-gray-500 leading-relaxed">Usaha terbaik dan prima dalam menjaga lingkungan sekolah.</p></div>
+                    <div class="glass-card p-6 rounded-3xl hover-card text-center"><div class="h-14 w-14 mx-auto bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-inner"><i class="fa-solid fa-arrow-trend-up"></i></div><h3 class="text-lg font-bold text-emerald-900 mb-2">Better</h3><p class="text-xs text-gray-500 leading-relaxed">Berkembang menjadi lebih baik dalam berinovasi daur ulang.</p></div>
+                    <div class="glass-card p-6 rounded-3xl hover-card text-center"><div class="h-14 w-14 mx-auto bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-inner"><i class="fa-solid fa-eye"></i></div><h3 class="text-lg font-bold text-emerald-900 mb-2">Attentive</h3><p class="text-xs text-gray-500 leading-relaxed">Peduli, perhatian, dan tanggap terhadap isu kebersihan.</p></div>
+                    <div class="glass-card p-6 rounded-3xl hover-card text-center"><div class="h-14 w-14 mx-auto bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-inner"><i class="fa-solid fa-praying-hands"></i></div><h3 class="text-lg font-bold text-emerald-900 mb-2">Thankfull</h3><p class="text-xs text-gray-500 leading-relaxed">Rasa syukur atas alam sekitar dengan merawat ciptaan Tuhan.</p></div>
                 </div>
+            </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                    <!-- Chart -->
-                    <div class="bg-gray-50 rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col items-center">
-                        <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-chart-pie text-emerald-500 mr-2"></i>Rekapitulasi Sampah</h3>
-                        <div class="w-full max-w-md relative">
-                            <canvas id="rekapChart"></canvas>
-                        </div>
-                    </div>
-                    <!-- Leaderboard -->
-                    <div class="bg-gray-50 rounded-2xl p-6 shadow-sm border border-gray-100">
-                        <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-trophy text-yellow-500 mr-2"></i>5 Kelas Terbaik</h3>
-                        <div id="leaderboardList" class="space-y-4">
-                            <!-- Leaderboard diisi via JS -->
-                        </div>
+            <div class="mb-24">
+                <div class="text-center mb-12"><h2 class="text-3xl font-black text-emerald-950 mb-3">Cara Penggunaan</h2><p class="text-gray-500 font-medium">Langkah mudah mengelola sampah melalui Eco Bank Digital.</p></div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-emerald-100 flex gap-4 hover-card"><div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex shrink-0 items-center justify-center font-bold text-xl">1</div><div><h4 class="font-bold text-lg text-emerald-900 mb-2">Pilah Sampah</h4><p class="text-sm text-gray-500">Pisahkan sampah (Botol, Kardus, Kaleng, Logam) bersih dari rumah.</p></div></div>
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-emerald-100 flex gap-4 hover-card"><div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex shrink-0 items-center justify-center font-bold text-xl">2</div><div><h4 class="font-bold text-lg text-emerald-900 mb-2">Setor & Timbang</h4><p class="text-sm text-gray-500">Bawa ke petugas Eco Bank sekolah. Sampah akan ditimbang.</p></div></div>
+                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-emerald-100 flex gap-4 hover-card"><div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex shrink-0 items-center justify-center font-bold text-xl">3</div><div><h4 class="font-bold text-lg text-emerald-900 mb-2">Cek Sistem</h4><p class="text-sm text-gray-500">Login menggunakan akun kelas untuk memantau total kilogram Anda.</p></div></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center mb-24">
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-emerald-100 text-center">
+                    <h3 class="text-xl font-black text-emerald-950 mb-2">Rekapitulasi Sampah</h3><p class="text-xs text-gray-500 mb-6">Persentase jenis sampah yang paling banyak disetorkan.</p>
+                    <div class="w-full max-w-sm mx-auto aspect-square relative"><canvas id="pieChart"></canvas></div>
+                </div>
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-emerald-100">
+                    <h3 class="text-xl font-black text-emerald-950 mb-6 flex items-center gap-2"><i class="fa-solid fa-trophy text-amber-500 text-2xl"></i> 5 Kelas Terbaik (Kg)</h3>
+                    <div id="leaderboard-container" class="space-y-4">
+                        <!-- Data Leaderboard Muncul Disini -->
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Galeri Kegiatan -->
-        <div class="py-16 bg-gray-50">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="text-center mb-12">
-                    <h2 class="text-3xl font-bold text-gray-900">Galeri Kegiatan</h2>
-                    <p class="text-gray-500 mt-2">Momen program Adiwiyata sekolah</p>
-                    <div class="w-24 h-1 bg-emerald-500 mx-auto mt-4 rounded-full"></div>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    <img src="https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Galeri 1" class="w-full h-64 object-cover rounded-xl shadow-sm">
-                    <img src="https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Galeri 2" class="w-full h-64 object-cover rounded-xl shadow-sm">
-                    <img src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Galeri 3" class="w-full h-64 object-cover rounded-xl shadow-sm">
-                    <img src="https://images.unsplash.com/photo-1604187351574-c75ca79f5807?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Galeri 4" class="w-full h-64 object-cover rounded-xl shadow-sm">
-                    <img src="https://images.unsplash.com/photo-1588681664899-f142ff2dc9b1?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Galeri 5" class="w-full h-64 object-cover rounded-xl shadow-sm">
-                    <img src="https://images.unsplash.com/photo-1503596476-1c12a8ba09a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Galeri 6" class="w-full h-64 object-cover rounded-xl shadow-sm">
+            <div class="mb-10">
+                <div class="text-center mb-12"><h2 class="text-3xl font-black text-emerald-950 mb-3">Galeri Kegiatan</h2><p class="text-gray-500 font-medium">Dokumentasi program Adiwiyata dan aksi lingkungan siswa.</p></div>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                    <div class="rounded-2xl overflow-hidden aspect-video shadow-sm border border-emerald-100"><img src="https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=600&q=80" alt="Galeri" class="w-full h-full object-cover"></div>
+                    <div class="rounded-2xl overflow-hidden aspect-video shadow-sm border border-emerald-100"><img src="https://images.unsplash.com/photo-1604187351574-c75ca79f5807?w=600&q=80" alt="Galeri" class="w-full h-full object-cover"></div>
+                    <div class="rounded-2xl overflow-hidden aspect-video shadow-sm border border-emerald-100"><img src="https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f?w=600&q=80" alt="Galeri" class="w-full h-full object-cover"></div>
+                    <div class="rounded-2xl overflow-hidden aspect-video shadow-sm border border-emerald-100"><img src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=600&q=80" alt="Galeri" class="w-full h-full object-cover"></div>
+                    <div class="rounded-2xl overflow-hidden aspect-video shadow-sm border border-emerald-100"><img src="https://images.unsplash.com/photo-1503596476-1c12a8ba09a9?w=600&q=80" alt="Galeri" class="w-full h-full object-cover"></div>
+                    <div class="rounded-2xl overflow-hidden aspect-video shadow-sm border border-emerald-100"><img src="https://images.unsplash.com/photo-1550989460-0adf9ea622e2?w=600&q=80" alt="Galeri" class="w-full h-full object-cover"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Footer -->
-        <footer class="bg-gray-900 pt-12 pb-6 border-t-4 border-emerald-500">
-            <div class="max-w-7xl mx-auto px-4 text-center">
-                <div class="flex justify-center items-center gap-2 mb-4">
-                    <i class="fas fa-leaf text-emerald-500 text-3xl"></i>
-                    <span class="text-2xl font-bold text-white">Eco Bank</span>
+        <footer class="w-full bg-white border-t-4 border-emerald-600 pt-8 pb-10 relative z-10 mt-10">
+            <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+                <div class="flex items-center gap-4">
+                    <img src="https://i.ibb.co.com/mV7Qr7Fw/logo.png" alt="Logo" class="h-10 w-10 object-contain grayscale opacity-70">
+                    <div>
+                        <h4 class="font-black text-gray-800 leading-none">ECO BANK</h4>
+                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">Sistem Informasi Pengelolaan Sampah</p>
+                    </div>
                 </div>
-                <p class="text-gray-400 max-w-md mx-auto mb-8">Sistem Informasi Pengelolaan Sampah untuk lingkungan yang lebih baik.</p>
-                <div class="border-t border-gray-800 pt-6">
-                    <p class="text-gray-500 text-sm">© 2026 Eco Bank. All rights reserved.</p>
+                <div class="text-center md:text-right">
+                    <p class="text-gray-500 text-sm font-semibold">&copy; Copyright Spenduga 2026. All rights reserved.</p>
                 </div>
             </div>
         </footer>
     </div>
 
-
-    <!-- ==================== DASHBOARD PAGE ==================== -->
-    <div id="dashboardPage" class="hidden min-h-screen bg-gray-50">
-        <!-- Navbar -->
-        <nav class="glass sticky top-0 z-40 border-b border-gray-200 shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16 items-center">
-                    <div class="flex items-center gap-2">
-                        <i class="fas fa-leaf text-emerald-600 text-2xl"></i>
-                        <span class="font-bold text-xl text-gray-900">Eco Bank</span>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <div class="text-right hidden sm:block">
-                            <p class="text-sm font-bold text-gray-900" id="userDisplayName">User</p>
-                            <p class="text-xs text-emerald-600 font-medium" id="userRoleBadge">Role</p>
-                        </div>
-                        <div class="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold border border-emerald-200 shadow-sm" id="userAvatar">U</div>
-                        <button id="logoutBtn" class="ml-4 text-gray-500 hover:text-red-500 transition" title="Keluar"><i class="fas fa-sign-out-alt text-xl"></i></button>
-                    </div>
-                </div>
+    <!-- MODAL LOGIN -->
+    <div id="page-login" class="fixed inset-0 z-[100] bg-emerald-900/40 backdrop-blur-md hidden-force items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm p-8 rounded-3xl shadow-2xl relative animate-[fadeIn_0.2s_ease-out]">
+            <button onclick="hideLoginModal()" class="absolute top-4 right-4 h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200"><i class="fa-solid fa-xmark"></i></button>
+            <div class="text-center mb-8 mt-2">
+                <img src="https://i.ibb.co.com/mV7Qr7Fw/logo.png" alt="Logo" class="h-16 w-16 mx-auto object-contain mb-4">
+                <h2 class="text-2xl font-black text-emerald-950">Masuk Akun</h2>
             </div>
-        </nav>
-
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="flex justify-between items-center mb-8">
+            
+            <form id="form-login" onsubmit="handleLogin(event)" class="space-y-5">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Dasbor Pengelolaan</h1>
-                    <p class="text-gray-500" id="dashSubtitle">Kelola data sampah</p>
-                </div>
-                <button id="exportPdfBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition shadow-md flex items-center gap-2">
-                    <i class="fas fa-file-pdf"></i> Export PDF
-                </button>
-            </div>
-
-            <!-- Stats Cards Dashboard -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-emerald-500 flex items-center">
-                    <div class="p-3 rounded-full bg-emerald-100 text-emerald-600 mr-4"><i class="fas fa-weight-hanging text-2xl"></i></div>
-                    <div><p class="text-sm text-gray-500 font-medium">Total Terkumpul</p><p class="text-2xl font-bold text-gray-900" id="dashTotalKg">0 Kg</p></div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500 flex items-center">
-                    <div class="p-3 rounded-full bg-blue-100 text-blue-600 mr-4"><i class="fas fa-list-ol text-2xl"></i></div>
-                    <div><p class="text-sm text-gray-500 font-medium">Total Transaksi</p><p class="text-2xl font-bold text-gray-900" id="dashTotalTx">0</p></div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-amber-500 flex items-center">
-                    <div class="p-3 rounded-full bg-amber-100 text-amber-600 mr-4"><i class="fas fa-trophy text-2xl"></i></div>
-                    <div><p class="text-sm text-gray-500 font-medium">Kategori Terbanyak</p><p class="text-xl font-bold text-gray-900" id="dashTopCat">-</p></div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Form Input -->
-                <div class="lg:col-span-1">
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-24">
-                        <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Catat Setoran Baru</h3>
-                        <div class="space-y-4">
-                            <div id="kelasSelectorContainer" class="hidden">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Kelas (Nasabah)</label>
-                                <select id="inputKelas" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-emerald-500 focus:border-emerald-500 outline-none"></select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori Sampah</label>
-                                <select id="inputKategori" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
-                                    <option value="Botol Plastik">Botol Plastik</option>
-                                    <option value="Kertas/Kardus">Kertas / Kardus</option>
-                                    <option value="Kaleng/Logam">Kaleng / Logam</option>
-                                    <option value="Minyak Jelantah">Minyak Jelantah</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Berat (Kg/Liter)</label>
-                                <input type="number" id="inputBerat" step="0.1" min="0.1" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="0.0">
-                            </div>
-                            <button id="submitTxBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg shadow transition flex justify-center items-center gap-2">
-                                <i class="fas fa-plus-circle"></i> Tambah Data
-                            </button>
-                        </div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Username</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-4 top-3.5 text-emerald-400"></i>
+                        <input type="text" id="login-username" placeholder="Masukkan username" required class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-sm">
                     </div>
                 </div>
-
-                <!-- Tabel Riwayat -->
-                <div class="lg:col-span-2">
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden" id="pdfArea">
-                        <div class="p-6 border-b border-gray-100 flex justify-between items-center">
-                            <h3 class="text-lg font-bold text-gray-900" id="tableTitle">Riwayat Transaksi</h3>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-gray-50 text-gray-600 text-sm border-b">
-                                        <th class="py-3 px-4 font-semibold">Tanggal</th>
-                                        <th class="py-3 px-4 font-semibold">Kelas</th>
-                                        <th class="py-3 px-4 font-semibold">Kategori</th>
-                                        <th class="py-3 px-4 font-semibold text-right">Berat</th>
-                                        <th class="py-3 px-4 font-semibold text-center" data-html2canvas-ignore>Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="txTableBody" class="text-sm divide-y divide-gray-100">
-                                    <!-- Rows via JS -->
-                                </tbody>
-                            </table>
-                        </div>
-                        <div id="emptyTableState" class="hidden p-8 text-center text-gray-500">
-                            <i class="fas fa-folder-open text-4xl mb-3 text-gray-300"></i>
-                            <p>Belum ada data transaksi tercatat.</p>
-                        </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Password</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-4 top-3.5 text-emerald-400"></i>
+                        <input type="password" id="login-password" placeholder="Masukkan password" required class="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-sm">
                     </div>
                 </div>
-            </div>
-        </main>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-600/30 mt-2 transition-all">Masuk</button>
+            </form>
+        </div>
     </div>
 
-    <!-- ==================== JAVASCRIPT (FIREBASE MODULE) ==================== -->
-    <script type="module">
-        // 1. IMPORT FIREBASE V11 (MANDATORY MODULES)
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // =========================================================================
-        // MASUKKAN KONFIGURASI FIREBASE ANDA DI SINI
-        // =========================================================================
-        const firebaseConfig = {
-            apiKey: "AIzaSyBjfyanUO2Rp8gPkEAi0ztmc9Vx8bu8So0",
-            authDomain: "ecobank23-84e52.firebaseapp.com",
-            projectId: "ecobank23-84e52",
-            storageBucket: "ecobank23-84e52.firebasestorage.app",
-            messagingSenderId: "569665421884",
-            appId: "1:569665421884:web:19a4f59f9fa4ccf9b23939"
-        };
-        
-        // 2. INITIALIZE FIREBASE
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // 3. GLOBAL VARIABLES
-        let allTransaksi = [];
-        let allUsers = [];
-        let currentUser = null;
-        let rekapChartInstance = null;
-        let deleteIdTarget = null;
-        
-        // Data Kelas 7A-9F untuk Auto-Seed & Dropdown Admin
-        const listKelas = ["7A","7B","7C","7D","7E","7F","8A","8B","8C","8D","8E","8F","9A","9B","9C","9D","9E","9F"];
-
-        // 4. UI ELEMENTS BINDING
-        const el = {
-            loadingOverlay: document.getElementById('loadingOverlay'),
-            landingPage: document.getElementById('landingPage'),
-            dashboardPage: document.getElementById('dashboardPage'),
-            loginModal: document.getElementById('loginModal'),
-            confirmModal: document.getElementById('confirmModal'),
-            openLoginBtn: document.getElementById('openLoginBtn'),
-            closeLoginBtn: document.getElementById('closeLoginBtn'),
-            submitLoginBtn: document.getElementById('submitLoginBtn'),
-            logoutBtn: document.getElementById('logoutBtn'),
-            cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
-            confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
-            submitTxBtn: document.getElementById('submitTxBtn'),
-            exportPdfBtn: document.getElementById('exportPdfBtn'),
-            usernameInp: document.getElementById('username'),
-            passwordInp: document.getElementById('password'),
-            loginError: document.getElementById('loginError')
-        };
-
-        // 5. AUTO-SEED DATABASE (Otomatis buat akun jika kosong)
-        async function checkAndSeedUsers() {
-            try {
-                const usersSnap = await getDocs(collection(db, "users"));
-                if (usersSnap.empty) {
-                    console.log("Database kosong. Melakukan Auto-Seed akun...");
-                    // Buat Admin
-                    await addDoc(collection(db, "users"), { username: 'admin', password: 'edudigital', role: 'admin' });
-                    // Buat Kelas
-                    for (const k of listKelas) {
-                        await addDoc(collection(db, "users"), { username: k.toLowerCase(), password: k.toLowerCase()+'123', role: 'kelas', namaKelas: k });
-                    }
-                    console.log("Auto-Seed selesai.");
-                }
-                
-                // Ambil data user ke memori lokal untuk pencocokan login super cepat
-                const freshUsersSnap = await getDocs(collection(db, "users"));
-                allUsers = [];
-                freshUsersSnap.forEach(doc => allUsers.push({ id: doc.id, ...doc.data() }));
-            } catch (e) {
-                console.error("Error Seeding/Fetching Users:", e);
-                el.loadingOverlay.classList.add('hidden');
-                alert("Gagal terhubung ke database. Pastikan Firebase Rules diatur ke mode 'test' / Public.");
-            }
-        }
-
-        // 6. REAL-TIME LISTENER (FIREBASE MAGIC!)
-        function startRealtimeListener() {
-            const q = query(collection(db, "transaksi")); 
-            
-            onSnapshot(q, (snapshot) => {
-                allTransaksi = [];
-                snapshot.forEach((doc) => {
-                    allTransaksi.push({ id: doc.id, ...doc.data() });
-                });
-                
-                allTransaksi.sort((a, b) => b.timestamp - a.timestamp);
-
-                updateLandingUI();
-                if (currentUser) updateDashboardUI();
-                
-                el.loadingOverlay.classList.add('hidden');
-            }, (error) => {
-                console.error("Error Listener:", error);
-                el.loadingOverlay.classList.add('hidden');
-            });
-        }
-
-        // 7. INISIALISASI AWAL
-        window.addEventListener('DOMContentLoaded', async () => {
-            el.loadingOverlay.classList.remove('hidden');
-            
-            const savedUser = sessionStorage.getItem('currentUser');
-            if (savedUser) currentUser = JSON.parse(savedUser);
-
-            await checkAndSeedUsers();
-            startRealtimeListener();
-
-            if (currentUser) showDashboard();
-        });
-
-        // 8. FUNGSI LOGIKA (CALCULATION)
-        function calculateStats(dataList) {
-            let total = 0;
-            const rekap = { 'Botol Plastik':0, 'Kertas/Kardus':0, 'Kaleng/Logam':0, 'Minyak Jelantah':0 };
-            const kelasTotal = {};
-
-            dataList.forEach(tx => {
-                const berat = parseFloat(tx.berat_kg || 0);
-                total += berat;
-                if(rekap[tx.kategori_sampah] !== undefined) rekap[tx.kategori_sampah] += berat;
-                
-                if(tx.kelas) {
-                    if(!kelasTotal[tx.kelas]) kelasTotal[tx.kelas] = 0;
-                    kelasTotal[tx.kelas] += berat;
-                }
-            });
-
-            return { total, rekap, kelasTotal };
-        }
-
-        // 9. UPDATE UI LANDING PAGE
-        function updateLandingUI() {
-            const stats = calculateStats(allTransaksi);
-            
-            // A. Update Chart
-            const ctx = document.getElementById('rekapChart').getContext('2d');
-            if(rekapChartInstance) rekapChartInstance.destroy();
-            
-            rekapChartInstance = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: Object.keys(stats.rekap),
-                    datasets: [{
-                        data: Object.values(stats.rekap),
-                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
-                        borderWidth: 0
-                    }]
-                },
-                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-            });
-
-            // B. Update Leaderboard (Top 5)
-            const lbContainer = document.getElementById('leaderboardList');
-            const sortedKelas = Object.keys(stats.kelasTotal)
-                                    .map(k => ({ kelas: k, kg: stats.kelasTotal[k] }))
-                                    .sort((a,b) => b.kg - a.kg)
-                                    .slice(0, 5);
-            
-            if (sortedKelas.length === 0) {
-                lbContainer.innerHTML = '<p class="text-center text-gray-500 italic">Belum ada penyetoran</p>';
-                return;
-            }
-
-            lbContainer.innerHTML = sortedKelas.map((k, i) => `
-                <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${i===0?'bg-yellow-100 text-yellow-600':(i===1?'bg-gray-200 text-gray-600':(i===2?'bg-orange-100 text-orange-700':'bg-emerald-50 text-emerald-600'))}">
-                            ${i+1}
-                        </div>
-                        <span class="font-bold text-gray-800">Kelas ${k.kelas}</span>
+    <!-- WRAPPER DASHBOARD -->
+    <div id="app-wrapper" class="hidden-force h-screen w-full flex overflow-hidden">
+        <div id="sidebar" class="bg-white w-64 flex-shrink-0 flex flex-col h-full transition-transform duration-300 absolute z-40 md:relative md:translate-x-0 -translate-x-full border-r border-gray-200 shadow-sm">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <div class="flex items-center gap-3">
+                    <img src="https://i.ibb.co.com/mV7Qr7Fw/logo.png" alt="Logo" class="h-8 w-8 object-contain">
+                    <div>
+                        <h2 class="text-lg font-black text-emerald-950 tracking-tight">Eco Bank</h2>
+                        <p class="text-[9px] text-emerald-600 uppercase tracking-widest font-bold">Spenduga</p>
                     </div>
-                    <span class="font-bold text-emerald-600">${k.kg.toFixed(1)} Kg</span>
                 </div>
-            `).join('');
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-400"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+                <button onclick="showPage('landing')" class="w-full mb-4 flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2.5 rounded-xl text-xs font-bold border border-emerald-200/50 shadow-sm transition-colors">
+                    <i class="fa-solid fa-house"></i> Ke Halaman Depan
+                </button>
+                
+                <div id="menu-admin" class="hidden-force space-y-1">
+                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-2">Menu Utama</p>
+                    <button onclick="navigate('admin-dashboard')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-semibold text-gray-600 hover:bg-emerald-50 hover:text-emerald-700"><i class="fa-solid fa-chart-pie w-5"></i> Dashboard Admin</button>
+                    <button onclick="navigate('admin-transaksi')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-semibold text-gray-600 hover:bg-emerald-50 hover:text-emerald-700"><i class="fa-solid fa-clock-rotate-left w-5"></i> Riwayat Transaksi</button>
+                </div>
+                
+                <div id="menu-nasabah" class="hidden-force space-y-1">
+                    <p class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-2">Area Kelas</p>
+                    <button onclick="navigate('nasabah-dashboard')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-semibold text-gray-600 hover:bg-emerald-50 hover:text-emerald-700"><i class="fa-solid fa-wallet w-5"></i> Data Setoran Saya</button>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-gray-100 bg-gray-50/50">
+                <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors">
+                    <i class="fa-solid fa-right-from-bracket"></i> Keluar
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col h-full bg-transparent overflow-hidden relative">
+            <header class="glass-card border-b border-gray-200 h-16 flex items-center justify-between px-6 shrink-0 z-10 relative">
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSidebar()" class="md:hidden text-gray-600"><i class="fa-solid fa-bars text-xl"></i></button>
+                    <span id="header-title" class="font-bold text-emerald-950 text-lg hidden md:block">Dashboard</span>
+                </div>
+                <div class="flex items-center gap-3 bg-white px-3 py-1.5 rounded-full border border-gray-200">
+                    <div class="h-8 w-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold"><i class="fa-solid fa-user"></i></div>
+                    <div class="text-right pr-2">
+                        <p id="user-name-display" class="text-xs font-bold text-gray-800">User</p>
+                        <p id="user-role-display" class="text-[10px] text-emerald-600 font-bold uppercase">Role</p>
+                    </div>
+                </div>
+            </header>
+            
+            <main class="flex-1 overflow-y-auto p-4 md:p-8 relative">
+                <div class="relative z-10 max-w-5xl mx-auto">
+                    
+                    <!-- HALAMAN ADMIN DASHBOARD -->
+                    <div id="page-admin-dashboard" class="page-content hidden-force">
+                        <h2 class="text-2xl font-black text-emerald-950 mb-6">Ringkasan Sistem</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div class="glass-card rounded-2xl p-6 flex items-center gap-5 shadow-sm border-emerald-100">
+                                <div class="bg-emerald-100 text-emerald-600 h-14 w-14 rounded-2xl flex items-center justify-center text-2xl"><i class="fa-solid fa-users"></i></div>
+                                <div><p class="text-sm text-gray-500 font-bold mb-1">Kelas Terdaftar</p><p class="text-3xl font-black text-emerald-950" id="dash-tot-nasabah">0</p></div>
+                            </div>
+                            <div class="glass-card rounded-2xl p-6 flex items-center gap-5 shadow-sm border-teal-100">
+                                <div class="bg-teal-100 text-teal-600 h-14 w-14 rounded-2xl flex items-center justify-center text-2xl"><i class="fa-solid fa-weight-hanging"></i></div>
+                                <div><p class="text-sm text-gray-500 font-bold mb-1">Total Sampah Terkumpul</p><p class="text-3xl font-black text-emerald-950" id="dash-tot-kg">0.0 Kg</p></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- HALAMAN ADMIN TRANSAKSI -->
+                    <div id="page-admin-transaksi" class="page-content hidden-force">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-black text-emerald-950">Riwayat Setoran Global</h2>
+                            <div class="flex gap-2">
+                                <button onclick="showModalTransaksi('admin')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition-colors"><i class="fa-solid fa-plus"></i> Tambah</button>
+                                <button onclick="exportToPDF('admin')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                            </div>
+                        </div>
+                        <div class="glass-card rounded-2xl overflow-hidden shadow-sm" id="pdf-area-admin">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-gray-50/80 text-gray-500 border-b border-gray-200 text-xs uppercase">
+                                            <th class="p-4 font-bold whitespace-nowrap">Tgl & Jam</th>
+                                            <th class="p-4 font-bold">Kelas</th>
+                                            <th class="p-4 font-bold">Kategori</th>
+                                            <th class="p-4 font-bold text-right">Berat (Kg)</th>
+                                            <th class="p-4 font-bold text-center ignore-pdf">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabel-transaksi-global" class="divide-y divide-gray-100 text-sm font-medium text-gray-700"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- HALAMAN NASABAH DASHBOARD -->
+                    <div id="page-nasabah-dashboard" class="page-content hidden-force">
+                        <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-8 text-white shadow-xl shadow-emerald-500/20 mb-8">
+                            <p class="text-emerald-100 font-bold mb-2 text-xs tracking-widest uppercase">Total Setoran Kelas</p>
+                            <h2 class="text-5xl font-black mb-4 drop-shadow-md"><span id="nasabah-saldo">0.0</span> <span class="text-2xl">Kg</span></h2>
+                            <div class="inline-block bg-white/20 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/20 font-bold text-sm"><i class="fa-regular fa-id-card mr-2"></i><span id="nasabah-nama-kartu">Nama Kelas</span></div>
+                        </div>
+                        <div class="flex justify-between items-center mb-4 mt-8">
+                            <h3 class="text-xl font-black text-emerald-950">Riwayat Setoran Saya</h3>
+                            <div class="flex gap-2">
+                                <button onclick="showModalTransaksi('nasabah')" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition-colors"><i class="fa-solid fa-plus"></i> Tambah</button>
+                                <button onclick="exportToPDF('nasabah')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                            </div>
+                        </div>
+                        <div class="glass-card rounded-2xl overflow-hidden shadow-sm" id="pdf-area-nasabah">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-gray-50/80 text-gray-500 border-b border-gray-200 text-xs uppercase">
+                                            <th class="p-4 font-bold whitespace-nowrap">Tanggal</th>
+                                            <th class="p-4 font-bold">Kategori Sampah</th>
+                                            <th class="p-4 font-bold text-right">Berat (Kg)</th>
+                                            <th class="p-4 font-bold text-center ignore-pdf">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabel-transaksi-pribadi" class="divide-y divide-gray-100 text-sm font-medium text-gray-700"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <div id="toast" class="fixed bottom-6 right-6 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 z-[9999999] text-sm font-bold flex items-center gap-3 border border-gray-700">
+        <i class="fa-solid fa-circle-info text-emerald-400"></i> <span id="toast-msg">Notifikasi</span>
+    </div>
+
+    <!-- MODAL TAMBAH TRANSAKSI -->
+    <div id="modal-transaksi" class="fixed inset-0 z-[200] bg-emerald-900/40 backdrop-blur-sm hidden-force items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl relative animate-[fadeIn_0.2s_ease-out]">
+            <button onclick="hideModalTransaksi()" class="absolute top-4 right-4 text-gray-400 hover:bg-gray-100 h-8 w-8 rounded-full flex items-center justify-center transition-colors"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="text-xl font-black text-emerald-950 mb-4 border-b-2 border-emerald-100 pb-2">Input Setoran Sampah</h2>
+            <form id="form-transaksi" onsubmit="submitTransaksi(event)" class="space-y-4">
+                <div id="wrap-nasabah">
+                    <label class="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Pilih Kelas</label>
+                    <select id="trx-user" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-semibold text-gray-700"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Kategori Sampah</label>
+                    <select id="trx-kategori" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-semibold text-gray-700">
+                        <option value="Botol">Botol Plastik</option>
+                        <option value="Kardus">Kardus / Kertas</option>
+                        <option value="Kaleng">Kaleng Bekas</option>
+                        <option value="Logam">Logam / Besi</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Berat (Kg)</label>
+                    <input type="number" id="trx-berat" required min="0.1" step="0.1" placeholder="Contoh: 5.5" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-bold text-emerald-700">
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-600/30 mt-2 transition-all">Simpan Data</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL KONFIRMASI HAPUS -->
+    <div id="modal-confirm" class="fixed inset-0 z-[300] bg-red-900/40 backdrop-blur-sm hidden-force items-center justify-center p-4">
+        <div class="bg-white w-full max-w-xs p-6 rounded-3xl shadow-2xl text-center">
+            <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-red-100 mb-4 shadow-inner">
+                <i class="fa-solid fa-trash-can text-2xl text-red-500"></i>
+            </div>
+            <h3 class="text-lg font-black text-gray-900 mb-2">Hapus Data?</h3>
+            <p class="text-xs text-gray-500 mb-6 font-medium">Data setoran ini akan dihapus permanen dan total timbangan kelas akan dikurangi.</p>
+            <div class="flex gap-3">
+                <button onclick="hideConfirmModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl transition-colors text-sm">Batal</button>
+                <button onclick="executeDelete()" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-red-500/30 transition-colors text-sm">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // =========================================================
+    // 1. INISIALISASI FIREBASE (VERSI STANDAR & STABIL)
+    // =========================================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyBjfyanUO2Rp8gPkEAi0ztmc9Vx8bu8So0",
+        authDomain: "ecobank23-84e52.firebaseapp.com",
+        projectId: "ecobank23-84e52",
+        storageBucket: "ecobank23-84e52.firebasestorage.app",
+        messagingSenderId: "569665421884",
+        appId: "1:569665421884:web:19a4f59f9fa4ccf9b23939"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // =========================================================
+    // 2. VARIABEL GLOBAL & PENGATUR UI
+    // =========================================================
+    let currentUser = null;
+    let currentTransaksiGlobal = [];
+    let currentTransaksiPribadi = [];
+    let myChart = null;
+    let globalNasabahList = [];
+    let deleteTargetId = null;
+
+    // FUNGSI LOADING YANG SANGAT KUAT (Tidak bisa digagalkan Tailwind)
+    function showLoading(show) {
+        let overlay = document.getElementById('loading-overlay');
+        if (show) {
+            overlay.style.display = 'flex';
+        } else {
+            overlay.style.display = 'none';
+        }
+    }
+
+    function showToast(msg) {
+        let t = document.getElementById('toast');
+        document.getElementById('toast-msg').innerText = msg;
+        t.classList.remove('translate-y-20', 'opacity-0');
+        setTimeout(() => t.classList.add('translate-y-20', 'opacity-0'), 3000);
+    }
+
+    // =========================================================
+    // 3. FUNGSI LOGIKA DATABASE (AUTO-SEED & REALTIME)
+    // =========================================================
+    async function initFirebaseData() {
+        showLoading(true);
+        
+        // PENGAMAN EKSTREM: Loading dipaksa mati maksimal 8 detik
+        let safeTimeout = setTimeout(() => {
+            showLoading(false);
+            console.warn("Mencegah loading nyangkut.");
+        }, 8000);
+
+        try {
+            // A. Auto-Seed (Buat Akun Otomatis Jika Kosong)
+            let usersSnap = await db.collection("users").get();
+            if (usersSnap.empty) {
+                document.getElementById('loading-text').innerText = "Membuat Database Baru...";
+                await db.collection("users").add({ username: 'admin', password: 'edudigital', role: 'Admin', nama: 'Administrator' });
+                
+                const kls = ['7a','7b','7c','7d','7e','7f','8a','8b','8c','8d','8e','8f','9a','9b','9c','9d','9e','9f'];
+                for(let k of kls) {
+                    await db.collection("users").add({ username: k, password: k+'123', role: 'Nasabah', nama: 'Kelas ' + k.toUpperCase() });
+                }
+                usersSnap = await db.collection("users").get(); // Refresh
+            }
+            
+            // Simpan Data User ke Memori Lokal
+            globalNasabahList = [];
+            usersSnap.forEach(doc => {
+                let d = doc.data();
+                if(d.role === 'Nasabah') globalNasabahList.push({ id_user: doc.id, ...d, total_kg: 0 });
+            });
+
+            // B. Real-Time Listener Transaksi
+            db.collection("transaksi").onSnapshot((snapshot) => {
+                let allTx = [];
+                snapshot.forEach(doc => allTx.push({ id_transaksi: doc.id, ...doc.data() }));
+                
+                // Urutkan dari yang terbaru
+                allTx.sort((a,b) => b.timestamp - a.timestamp);
+                currentTransaksiGlobal = allTx;
+                
+                // Hitung ulang total kg untuk setiap kelas
+                globalNasabahList.forEach(n => {
+                    let txUser = allTx.filter(t => t.id_user === n.id_user);
+                    n.total_kg = txUser.reduce((sum, t) => sum + parseFloat(t.nominal), 0);
+                });
+
+                // Perbarui UI
+                renderLandingData();
+                if(currentUser) {
+                    if (currentUser.role === 'Admin') {
+                        loadAdminDashboard(); 
+                        loadTransaksiGlobal();
+                    } else {
+                        loadNasabahDashboard();
+                    }
+                }
+                
+                clearTimeout(safeTimeout);
+                showLoading(false);
+            }, (error) => {
+                console.error("Gagal membaca transaksi:", error);
+                showLoading(false);
+            });
+
+        } catch(e) {
+            console.error("Gagal Inisialisasi Database:", e);
+            showLoading(false);
+        }
+    }
+
+    // =========================================================
+    // 4. AUTENTIKASI (LOGIN & LOGOUT)
+    // =========================================================
+    async function handleLogin(e) {
+        e.preventDefault();
+        showLoading(true);
+        let u = document.getElementById('login-username').value.trim().toLowerCase();
+        let p = document.getElementById('login-password').value.trim();
+        
+        try {
+            let query = await db.collection("users").where("username", "==", u).where("password", "==", p).get();
+            if (!query.empty) {
+                let doc = query.docs[0];
+                currentUser = { id_user: doc.id, ...doc.data() };
+                
+                document.getElementById('user-name-display').innerText = currentUser.nama;
+                document.getElementById('user-role-display').innerText = currentUser.role;
+                
+                hideLoginModal();
+                showToast("Selamat datang, " + currentUser.nama);
+                document.getElementById('form-login').reset();
+                
+                document.getElementById('menu-admin').classList.add('hidden-force');
+                document.getElementById('menu-nasabah').classList.add('hidden-force');
+                document.getElementById(currentUser.role === 'Admin' ? 'menu-admin' : 'menu-nasabah').classList.remove('hidden-force');
+                
+                navigate('auto');
+            } else {
+                showToast("Username atau Password salah!");
+            }
+        } catch(err) {
+            showToast("Sistem Error: " + err.message);
+        }
+        showLoading(false);
+    }
+
+    function handleLogout() {
+        currentUser = null;
+        showPage('landing');
+        showToast("Berhasil keluar.");
+    }
+
+    // =========================================================
+    // 5. UPDATE DATA DASHBOARD & LANDING
+    // =========================================================
+    function renderLandingData() {
+        let pData = [0,0,0,0]; // Botol, Kardus, Kaleng, Logam
+        currentTransaksiGlobal.forEach(t => {
+            if(t.rincian === 'Botol') pData[0] += parseFloat(t.nominal);
+            if(t.rincian === 'Kardus') pData[1] += parseFloat(t.nominal);
+            if(t.rincian === 'Kaleng') pData[2] += parseFloat(t.nominal);
+            if(t.rincian === 'Logam') pData[3] += parseFloat(t.nominal);
+        });
+
+        // Update Chart
+        let ctx = document.getElementById('pieChart');
+        if (ctx) { 
+            if (myChart) myChart.destroy(); 
+            let isEmpty = pData.every(item => item === 0);
+            myChart = new Chart(ctx, { 
+                type: 'doughnut', 
+                data: { 
+                    labels: ['Botol', 'Kardus', 'Kaleng', 'Logam'], 
+                    datasets: [{ 
+                        data: isEmpty ? [1,1,1,1] : pData, 
+                        backgroundColor: isEmpty ? ['#e5e7eb', '#e5e7eb', '#e5e7eb', '#e5e7eb'] : ['#3b82f6', '#eab308', '#ef4444', '#8b5cf6'], 
+                        borderWidth: 0 
+                    }] 
+                }, 
+                options: { 
+                    responsive: true, maintainAspectRatio: true, cutout: '70%', 
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: {family: "'Segoe UI', sans-serif", weight: 'bold'} } },
+                        tooltip: { callbacks: { label: function(c) { return isEmpty ? ' Belum ada data' : ' ' + c.parsed + ' Kg'; } } }
+                    } 
+                } 
+            }); 
         }
 
-        // 10. UPDATE UI DASHBOARD
-        function updateDashboardUI() {
-            if(!currentUser) return;
-            
-            let userTx = currentUser.role === 'admin' 
-                        ? allTransaksi 
-                        : allTransaksi.filter(tx => tx.kelas === currentUser.namaKelas);
-            
-            const stats = calculateStats(userTx);
-            
-            document.getElementById('dashTotalKg').innerText = stats.total.toFixed(1) + ' Kg';
-            document.getElementById('dashTotalTx').innerText = userTx.length;
-            
-            let topCat = '-';
-            let maxCatVal = 0;
-            for(const [cat, val] of Object.entries(stats.rekap)) {
-                if(val > maxCatVal) { maxCatVal = val; topCat = cat; }
-            }
-            document.getElementById('dashTopCat').innerText = topCat;
+        // Update Leaderboard
+        let top5 = [...globalNasabahList].sort((a,b) => b.total_kg - a.total_kg).slice(0,5);
+        let boardHtml = top5.map((u, i) => {
+            if(u.total_kg === 0) return ''; // Jangan tampilkan jika 0
+            return `
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                <div class="flex items-center gap-4">
+                    <div class="w-8 flex justify-center">
+                        ${i===0 ? '<i class="fa-solid fa-medal text-yellow-400 text-lg"></i>' : i===1 ? '<i class="fa-solid fa-medal text-gray-400 text-lg"></i>' : i===2 ? '<i class="fa-solid fa-medal text-amber-700 text-lg"></i>' : `<span class="text-sm font-bold text-gray-400 w-5 text-center">#${i+1}</span>`}
+                    </div>
+                    <span class="font-bold text-gray-800">${u.nama}</span>
+                </div>
+                <span class="font-black text-emerald-600 bg-emerald-100 px-3 py-1 rounded-lg text-sm">${u.total_kg.toFixed(1)} Kg</span>
+            </div>
+            `;
+        }).join('');
+        document.getElementById('leaderboard-container').innerHTML = boardHtml || '<div class="text-center p-4 text-gray-400">Belum ada data setoran.</div>';
+    }
 
-            const tbody = document.getElementById('txTableBody');
-            const emptyState = document.getElementById('emptyTableState');
-            
-            if(userTx.length === 0) {
-                tbody.innerHTML = '';
-                emptyState.classList.remove('hidden');
-            } else {
-                emptyState.classList.add('hidden');
-                tbody.innerHTML = userTx.map(tx => {
-                    const d = new Date(tx.timestamp);
-                    const dateStr = `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
-                    return `
-                    <tr class="hover:bg-gray-50 transition">
-                        <td class="py-3 px-4 text-gray-500">${dateStr}</td>
-                        <td class="py-3 px-4 font-medium text-gray-900">${tx.kelas}</td>
-                        <td class="py-3 px-4"><span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold">${tx.kategori_sampah}</span></td>
-                        <td class="py-3 px-4 text-right font-bold text-gray-700">${parseFloat(tx.berat_kg).toFixed(1)}</td>
-                        <td class="py-3 px-4 text-center" data-html2canvas-ignore>
-                            <button onclick="window.triggerDelete('${tx.id}')" class="text-red-400 hover:text-red-600 transition"><i class="fas fa-trash-alt"></i></button>
-                        </td>
-                    </tr>
-                `}).join('');
-            }
+    function loadAdminDashboard() {
+        document.getElementById('dash-tot-nasabah').innerText = globalNasabahList.length;
+        let totKg = currentTransaksiGlobal.reduce((sum, t) => sum + parseFloat(t.nominal), 0);
+        document.getElementById('dash-tot-kg').innerText = totKg.toFixed(1) + " Kg";
+    }
+
+    function loadTransaksiGlobal() {
+        let html = currentTransaksiGlobal.map(t => `
+            <tr class="border-b border-gray-50 hover:bg-emerald-50/30 transition-colors">
+                <td class="p-4 text-gray-500 whitespace-nowrap">${t.tanggal}</td>
+                <td class="p-4 font-bold text-gray-800">${globalNasabahList.find(x => x.id_user === t.id_user)?.nama || 'Unknown'}</td>
+                <td class="p-4 text-gray-600">${t.rincian}</td>
+                <td class="p-4 text-right font-black text-emerald-600">${parseFloat(t.nominal).toFixed(1)} Kg</td>
+                <td class="p-4 text-center ignore-pdf">
+                    <button onclick="confirmDelete('${t.id_transaksi}')" class="bg-red-50 text-red-500 p-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors" title="Hapus Data"><i class="fa-solid fa-trash-can"></i></button>
+                </td>
+            </tr>
+        `).join('');
+        document.getElementById('tabel-transaksi-global').innerHTML = html || '<tr><td colspan="5" class="p-4 text-center text-gray-400">Belum ada transaksi</td></tr>'; 
+    }
+
+    function loadNasabahDashboard() {
+        document.getElementById('nasabah-nama-kartu').innerText = currentUser.nama; 
+        currentTransaksiPribadi = currentTransaksiGlobal.filter(t => t.id_user === currentUser.id_user);
+        
+        let totKg = currentTransaksiPribadi.reduce((sum, t) => sum + parseFloat(t.nominal), 0);
+        document.getElementById('nasabah-saldo').innerText = totKg.toFixed(1); 
+        
+        let html = currentTransaksiPribadi.map(t => `
+            <tr class="border-b border-gray-50 hover:bg-emerald-50/30 transition-colors">
+                <td class="p-4 text-gray-500 whitespace-nowrap">${t.tanggal}</td>
+                <td class="p-4 text-gray-600">${t.rincian}</td>
+                <td class="p-4 text-right font-black text-emerald-600">${parseFloat(t.nominal).toFixed(1)} Kg</td>
+                <td class="p-4 text-center ignore-pdf">
+                    <button onclick="confirmDelete('${t.id_transaksi}')" class="bg-red-50 text-red-500 p-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors" title="Hapus Data"><i class="fa-solid fa-trash-can"></i></button>
+                </td>
+            </tr>
+        `).join('');
+        document.getElementById('tabel-transaksi-pribadi').innerHTML = html || '<tr><td colspan="4" class="p-4 text-center text-gray-400">Belum ada transaksi</td></tr>'; 
+    }
+
+    // =========================================================
+    // 6. CRUD TRANSAKSI (CREATE & DELETE)
+    // =========================================================
+    async function submitTransaksi(e) {
+        e.preventDefault();
+        showLoading(true);
+        let idUser = document.getElementById('trx-user').value;
+        let rincian = document.getElementById('trx-kategori').value;
+        let nominal = parseFloat(document.getElementById('trx-berat').value);
+
+        hideModalTransaksi();
+        
+        try {
+            let tgl = new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'2-digit', year:'numeric'}) + ", " + new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+            await db.collection("transaksi").add({
+                id_user: idUser, rincian: rincian, nominal: nominal, tanggal: tgl, timestamp: Date.now()
+            });
+            showToast("Berhasil menyimpan data");
+        } catch(err) {
+            showToast("Gagal menyimpan data");
         }
+        showLoading(false);
+    }
 
-        // 11. EVENT LISTENERS
-        el.openLoginBtn.addEventListener('click', () => { el.loginModal.classList.remove('hidden'); });
-        el.closeLoginBtn.addEventListener('click', () => { 
-            el.loginModal.classList.add('hidden'); 
-            el.loginError.classList.add('hidden');
-        });
-
-        el.submitLoginBtn.addEventListener('click', () => {
-            const u = el.usernameInp.value.trim().toLowerCase();
-            const p = el.passwordInp.value.trim();
-            
-            const match = allUsers.find(x => x.username === u && x.password === p);
-            
-            if (match) {
-                currentUser = match;
-                sessionStorage.setItem('currentUser', JSON.stringify(match));
-                el.loginModal.classList.add('hidden');
-                el.loginError.classList.add('hidden');
-                el.usernameInp.value = ''; el.passwordInp.value = '';
-                showDashboard();
-            } else {
-                el.loginError.classList.remove('hidden');
-            }
-        });
-
-        el.logoutBtn.addEventListener('click', () => {
-            currentUser = null;
-            sessionStorage.removeItem('currentUser');
-            el.dashboardPage.classList.add('hidden');
-            el.landingPage.classList.remove('hidden');
-        });
-
-        function showDashboard() {
-            el.landingPage.classList.add('hidden');
-            el.dashboardPage.classList.remove('hidden');
-            
-            const dn = currentUser.role === 'admin' ? 'Administrator' : `Kelas ${currentUser.namaKelas}`;
-            document.getElementById('userDisplayName').innerText = dn;
-            document.getElementById('userRoleBadge').innerText = currentUser.role.toUpperCase();
-            document.getElementById('userAvatar').innerText = currentUser.role === 'admin' ? 'A' : currentUser.namaKelas.charAt(0);
-            
-            const selKelas = document.getElementById('kelasSelectorContainer');
-            const inKelas = document.getElementById('inputKelas');
-            if (currentUser.role === 'admin') {
-                selKelas.classList.remove('hidden');
-                inKelas.innerHTML = listKelas.map(k => `<option value="${k}">${k}</option>`).join('');
-            } else {
-                selKelas.classList.add('hidden');
-            }
-
-            updateDashboardUI();
+    async function executeDelete() {
+        if (!deleteTargetId) return;
+        let targetId = deleteTargetId; 
+        hideConfirmModal();
+        showLoading(true);
+        
+        try {
+            await db.collection("transaksi").doc(targetId).delete();
+            showToast("Berhasil menghapus data");
+        } catch(e) {
+            showToast("Gagal menghapus data");
         }
+        showLoading(false);
+    }
 
-        el.submitTxBtn.addEventListener('click', async () => {
-            const beratVal = document.getElementById('inputBerat').value;
-            if(!beratVal || parseFloat(beratVal) <= 0) { alert("Masukkan berat yang valid!"); return; }
+    // =========================================================
+    // 7. UI TOGGLES & MODALS
+    // =========================================================
+    function showLoginModal() { document.getElementById('page-login').classList.remove('hidden-force'); document.getElementById('page-login').classList.add('flex'); }
+    function hideLoginModal() { document.getElementById('page-login').classList.add('hidden-force'); document.getElementById('page-login').classList.remove('flex'); }
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('-translate-x-full'); }
+    function confirmDelete(id) { deleteTargetId = id; document.getElementById('modal-confirm').classList.remove('hidden-force'); document.getElementById('modal-confirm').classList.add('flex'); }
+    function hideConfirmModal() { document.getElementById('modal-confirm').classList.add('hidden-force'); document.getElementById('modal-confirm').classList.remove('flex'); deleteTargetId = null; }
 
-            const btn = el.submitTxBtn;
-            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+    function showModalTransaksi(role) {
+        let modal = document.getElementById('modal-transaksi');
+        document.getElementById('form-transaksi').reset();
+        
+        if (role === 'admin') {
+            document.getElementById('wrap-nasabah').classList.remove('hidden-force');
+            document.getElementById('trx-user').innerHTML = globalNasabahList.map(n => `<option value="${n.id_user}">${n.nama}</option>`).join('');
+        } else {
+            document.getElementById('wrap-nasabah').classList.add('hidden-force');
+            document.getElementById('trx-user').innerHTML = `<option value="${currentUser.id_user}">${currentUser.nama}</option>`;
+        }
+        modal.classList.remove('hidden-force'); modal.classList.add('flex');
+    }
+    function hideModalTransaksi() { document.getElementById('modal-transaksi').classList.add('hidden-force'); document.getElementById('modal-transaksi').classList.remove('flex'); }
 
-            const payload = {
-                kelas: currentUser.role === 'admin' ? document.getElementById('inputKelas').value : currentUser.namaKelas,
-                kategori_sampah: document.getElementById('inputKategori').value,
-                berat_kg: parseFloat(beratVal),
-                timestamp: Date.now()
-            };
-
-            try {
-                await addDoc(collection(db, "transaksi"), payload);
-                document.getElementById('inputBerat').value = '';
-            } catch (e) {
-                console.error(e); alert("Gagal menyimpan data.");
-            } finally {
-                btn.disabled = false; btn.innerHTML = '<i class="fas fa-plus-circle"></i> Tambah Data';
+    function showPage(pageId) {
+        document.getElementById('page-landing').classList.add('hidden-force');
+        document.getElementById('app-wrapper').classList.add('hidden-force');
+        document.getElementById('sidebar').classList.add('-translate-x-full');
+        document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden-force'));
+        
+        let navLanding = document.getElementById('navbar-landing');
+        let btnLogin = document.getElementById('btn-nav-login');
+        let btnDash = document.getElementById('btn-nav-dashboard');
+        
+        if (pageId === 'landing') {
+            document.getElementById('page-landing').classList.remove('hidden-force');
+            navLanding.classList.remove('hidden-force');
+            
+            if (currentUser) {
+                btnLogin.classList.add('hidden-force');
+                btnDash.classList.remove('hidden-force'); btnDash.classList.add('flex');
+            } else {
+                btnLogin.classList.remove('hidden-force');
+                btnDash.classList.add('hidden-force'); btnDash.classList.remove('flex');
             }
-        });
+        } else {
+            navLanding.classList.add('hidden-force');
+            document.getElementById('app-wrapper').classList.remove('hidden-force');
+            let targetPage = document.getElementById('page-' + pageId);
+            if (targetPage) targetPage.classList.remove('hidden-force');
+        }
+    }
 
-        window.triggerDelete = (id) => {
-            deleteIdTarget = id;
-            el.confirmModal.classList.remove('hidden');
-        };
+    function navigate(pageId) {
+        if (pageId === 'auto') pageId = currentUser.role === 'Admin' ? 'admin-dashboard' : 'nasabah-dashboard';
+        showPage(pageId);
+        
+        document.querySelectorAll('.nav-btn').forEach(btn => { btn.classList.remove('bg-emerald-50', 'text-emerald-700'); btn.classList.add('text-gray-600'); });
+        let activeBtn = document.querySelector(`button[onclick="navigate('${pageId}')"]`);
+        if (activeBtn) { activeBtn.classList.add('bg-emerald-50', 'text-emerald-700'); activeBtn.classList.remove('text-gray-600'); }
+        
+        document.getElementById('header-title').innerText = {'admin-dashboard': 'Dashboard Admin','admin-transaksi': 'Riwayat Global','nasabah-dashboard': 'Data Kelas Saya'}[pageId] || 'Dashboard';
+        if (pageId === 'admin-dashboard') loadAdminDashboard();
+        if (pageId === 'admin-transaksi') loadTransaksiGlobal();
+        if (pageId === 'nasabah-dashboard') loadNasabahDashboard();
+    }
 
-        el.cancelDeleteBtn.addEventListener('click', () => {
-            el.confirmModal.classList.add('hidden');
-            deleteIdTarget = null;
-        });
+    // =========================================================
+    // 8. PDF EXPORT
+    // =========================================================
+    function exportToPDF(type) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(18); doc.setTextColor(4, 120, 87); doc.text("Laporan Riwayat Setoran Eco Bank", 14, 22);
+        doc.setFontSize(11); doc.setTextColor(100);
+        const tglCetak = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        doc.text("Dicetak pada: " + tglCetak, 14, 30);
+        
+        let columns = []; let rows = [];
+        if(type === 'admin') {
+            doc.text("Tipe Laporan: Seluruh Nasabah (Global)", 14, 36);
+            columns = ["Tgl & Jam", "Kelas", "Kategori", "Berat (Kg)"];
+            rows = currentTransaksiGlobal.map(t => [t.tanggal, globalNasabahList.find(x => x.id_user === t.id_user)?.nama || 'Unknown', t.rincian, t.nominal]);
+        } else {
+            doc.text("Tipe Laporan: Kelas - " + currentUser.nama, 14, 36);
+            columns = ["Tanggal", "Kategori", "Berat (Kg)"];
+            rows = currentTransaksiPribadi.map(t => [t.tanggal, t.rincian, t.nominal]);
+        }
+        
+        doc.autoTable({ startY: 42, head: [columns], body: rows, theme: 'grid', headStyles: { fillColor: [16, 185, 129] }, styles: { fontSize: 10, cellPadding: 3 } });
+        
+        let finalY = doc.lastAutoTable.finalY || 42;
+        if (finalY > 240) { doc.addPage(); finalY = 20; }
+        doc.setFontSize(11); doc.setTextColor(0); doc.text("Balikpapan, " + tglCetak, 130, finalY + 20); doc.text("Admin Eco Bank,", 130, finalY + 26); doc.text("( _____________________ )", 125, finalY + 50);
+        
+        doc.save(`Laporan_Eco_Bank_${type}_${Date.now()}.pdf`);
+        showToast("PDF berhasil diunduh!");
+    }
 
-        el.confirmDeleteBtn.addEventListener('click', async () => {
-            if(!deleteIdTarget) return;
-            const btn = el.confirmDeleteBtn;
-            btn.disabled = true; btn.innerText = "Menghapus...";
-
-            try {
-                await deleteDoc(doc(db, "transaksi", deleteIdTarget));
-                el.confirmModal.classList.add('hidden');
-            } catch(e) {
-                console.error(e); alert("Gagal menghapus.");
-            } finally {
-                btn.disabled = false; btn.innerText = "Ya, Hapus";
-                deleteIdTarget = null;
-            }
-        });
-
-        el.exportPdfBtn.addEventListener('click', () => {
-            const element = document.getElementById('pdfArea');
-            const opt = {
-                margin: 0.5,
-                filename: `Rekap_Sampah_${currentUser.role==='admin'?'Semua':currentUser.namaKelas}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-            };
-            html2pdf().set(opt).from(element).save();
-        });
-
-    </script>
+    // =========================================================
+    // AWAL APLIKASI
+    // =========================================================
+    window.onload = () => {
+        showPage('landing');
+        initFirebaseData();
+    };
+</script>
 </body>
 </html>
