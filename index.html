@@ -169,16 +169,16 @@
 
 <script>
     // =========================================================
-    // KONFIGURASI BACKEND
+    // KONFIGURASI BACKEND (JANGAN LUPA GANTI URL!)
     // =========================================================
-    const IS_PREVIEW = false; // Set menjadi false agar terhubung ke Google Sheets
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzb7G6fDKwkkOMvSnsbINLtZEu3Y3hN6r2XxWYIk0az37DfuYd4kSjx1V1KIrpYRRpDnA/exec"; 
+    const IS_PREVIEW = false; 
+    const GAS_URL = "PASTE_URL_APPS_SCRIPT_ANDA_DISINI"; 
 
     let currentUser = null, currentTransaksiGlobal = [], currentTransaksiPribadi = [], myChart = null;
     
-    // Data Dummy (Hanya dipakai jika IS_PREVIEW = true)
-    let dbDummy = { users: [{ id_user: "U001", nama: "Administrator", username: "admin", password: "edudigital", role: "Admin", total_kg: 0 }], kategori: [{ id_sampah: "K01", nama_sampah: "Botol", warna: "#3b82f6" }, { id_sampah: "K02", nama_sampah: "Kardus", warna: "#eab308" }, { id_sampah: "K03", nama_sampah: "Kaleng", warna: "#ef4444" }, { id_sampah: "K04", nama_sampah: "Logam", warna: "#8b5cf6" }], transaksi: [{ id_transaksi: "T01", tanggal: "01/06/2026, 08:15", id_user: "U002", jenis_transaksi: "Setor", rincian: "Botol (Bersih)", nominal: 12 }, { id_transaksi: "T02", tanggal: "01/06/2026, 09:30", id_user: "U005", jenis_transaksi: "Setor", rincian: "Kardus Bekas", nominal: 25 }, { id_transaksi: "T03", tanggal: "02/06/2026, 10:00", id_user: "U002", jenis_transaksi: "Setor", rincian: "Kaleng Minuman", nominal: 5 }] };
-    ['7a','7b','7c','7d','7e','7f','8a','8b','8c','8d','8e','8f','9a','9b','9c','9d','9e','9f'].forEach((k, idx) => { dbDummy.users.push({ id_user: "U00"+(idx+2), nama: "Kelas " + k.toUpperCase(), username: k, password: k+"123", role: "Nasabah", total_kg: Math.floor(Math.random() * 150) + 10 }); });
+    // Data Dummy (Hanya terpakai jika URL Apps Script kosong / IS_PREVIEW = true)
+    let dbDummy = { users: [{ id_user: "U001", nama: "Administrator", username: "admin", password: "edudigital", role: "Admin", total_kg: 0 }] };
+    ['7a','7b','7c','7d','7e','7f'].forEach((k, idx) => { dbDummy.users.push({ id_user: "U00"+(idx+2), nama: "Kelas " + k.toUpperCase(), username: k, password: k+"123", role: "Nasabah", total_kg: Math.floor(Math.random() * 50) + 10 }); });
 
     function showLoading(show) { document.getElementById('loading-overlay').classList[show ? 'remove' : 'add']('hidden-force'); document.getElementById('loading-overlay').classList[show ? 'add' : 'remove']('flex'); }
     function showToast(msg) { let t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.remove('translate-y-20', 'opacity-0'); setTimeout(() => t.classList.add('translate-y-20', 'opacity-0'), 3000); }
@@ -194,6 +194,8 @@
             document.getElementById('page-landing').classList.remove('hidden-force'); navLanding.classList.remove('hidden-force');
             if(currentUser) { btnLogin.classList.add('hidden-force'); btnDash.classList.remove('hidden-force'); btnDash.classList.add('flex'); } 
             else { btnLogin.classList.remove('hidden-force'); btnDash.classList.add('hidden-force'); btnDash.classList.remove('flex'); }
+            
+            // Trigger Load Data Landing Page setiap kali kembali ke depan
             renderLandingData();
         } else {
             navLanding.classList.add('hidden-force'); document.getElementById('app-wrapper').classList.remove('hidden-force');
@@ -211,13 +213,13 @@
     }
 
     async function apiCall(payload) {
-        if(IS_PREVIEW) return simulateBackend(payload);
+        if(IS_PREVIEW || !GAS_URL.startsWith("http")) return simulateBackend(payload);
         
         showLoading(true);
         try {
             let response = await fetch(GAS_URL, {
                 method: 'POST',
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload) // Data dikirim secara aman
             });
             let result = await response.json();
             showLoading(false);
@@ -231,12 +233,17 @@
     }
 
     function simulateBackend(payload) {
-        return new Promise(res => setTimeout(() => {
-            if(payload.action === 'login') { let user = dbDummy.users.find(u => u.username === payload.username && u.password === payload.password); res(user ? { status: 'success', data: { id_user: user.id_user, nama: user.nama, role: user.role } } : { status: 'error', message: 'Username/Password salah!' }); }
-            else if(payload.action === 'getAdminDashboard') res({ status: 'success', data: { totNasabah: dbDummy.users.filter(u => u.role === 'Nasabah').length, totKg: dbDummy.users.filter(u => u.role === 'Nasabah').reduce((sum, u) => sum + (u.total_kg||0), 0) }});
-            else if(payload.action === 'getTransaksiData') res({ status: 'success', transaksi: dbDummy.transaksi, nasabah: dbDummy.users.filter(u=>u.role==='Nasabah') });
-            else if(payload.action === 'getNasabahDashboard') { let user = dbDummy.users.find(u => u.id_user === payload.id_user), trx = dbDummy.transaksi.filter(t => t.id_user === payload.id_user); res({ status: 'success', data: { total_kg: user.total_kg, transaksi: trx } }); }
-        }, 500));
+        return new Promise(res => {
+            showLoading(true);
+            setTimeout(() => {
+                showLoading(false);
+                if(payload.action === 'login') { let user = dbDummy.users.find(u => u.username === payload.username && u.password === payload.password); res(user ? { status: 'success', data: { id_user: user.id_user, nama: user.nama, role: user.role } } : { status: 'error', message: 'Username/Password salah!' }); }
+                else if(payload.action === 'getLandingData') { let nas = dbDummy.users.filter(u => u.role === 'Nasabah').sort((a,b) => b.total_kg - a.total_kg).slice(0,5); res({ status: 'success', top5: nas, pieData: [45, 25, 20, 10] }); }
+                else if(payload.action === 'getAdminDashboard') res({ status: 'success', data: { totNasabah: 18, totKg: 150 }});
+                else if(payload.action === 'getTransaksiData') res({ status: 'success', transaksi: [], nasabah: [] });
+                else if(payload.action === 'getNasabahDashboard') res({ status: 'success', data: { total_kg: 25, transaksi: [] } });
+            }, 800) // Delay simulasi loading
+        });
     }
 
     async function handleLogin(e) {
@@ -251,16 +258,51 @@
     }
     function handleLogout() { currentUser = null; showPage('landing'); showToast("Berhasil keluar."); }
 
-    function renderLandingData() {
-        let kelas = dbDummy.users.filter(u => u.role === 'Nasabah').sort((a,b) => (b.total_kg || 0) - (a.total_kg || 0)).slice(0, 5);
-        document.getElementById('leaderboard-container').innerHTML = kelas.map((u, i) => `<div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100"><div class="flex items-center gap-4"><div class="w-8 flex justify-center">${i===0?'<i class="fa-solid fa-medal text-yellow-400 text-lg"></i>':i===1?'<i class="fa-solid fa-medal text-gray-400 text-lg"></i>':i===2?'<i class="fa-solid fa-medal text-amber-700 text-lg"></i>':`<span class="text-sm font-bold text-gray-400 w-5 text-center">#${i+1}</span>`}</div><span class="font-bold text-gray-800">${u.nama}</span></div><span class="font-black text-emerald-600 bg-emerald-100 px-3 py-1 rounded-lg text-sm">${u.total_kg} Kg</span></div>`).join('');
+    // FUNGSI RENDER LANDING PAGE DARI DATABASE
+    async function renderLandingData() {
+        let res = await apiCall({action: 'getLandingData'});
+        let kelas = [], pData = [0,0,0,0];
+        
+        if (res.status === 'success') {
+            kelas = res.top5;
+            pData = res.pieData;
+        }
+
+        // Render Leaderboard
+        document.getElementById('leaderboard-container').innerHTML = kelas.map((u, i) => `<div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100"><div class="flex items-center gap-4"><div class="w-8 flex justify-center">${i===0?'<i class="fa-solid fa-medal text-yellow-400 text-lg"></i>':i===1?'<i class="fa-solid fa-medal text-gray-400 text-lg"></i>':i===2?'<i class="fa-solid fa-medal text-amber-700 text-lg"></i>':`<span class="text-sm font-bold text-gray-400 w-5 text-center">#${i+1}</span>`}</div><span class="font-bold text-gray-800">${u.nama}</span></div><span class="font-black text-emerald-600 bg-emerald-100 px-3 py-1 rounded-lg text-sm">${u.total_kg} Kg</span></div>`).join('') || '<div class="text-center p-4 text-gray-400">Belum ada data setoran.</div>';
+        
+        // Render Pie Chart
         let ctx = document.getElementById('pieChart');
-        if(ctx) { if(myChart) myChart.destroy(); myChart = new Chart(ctx, { type: 'doughnut', data: { labels: dbDummy.kategori.map(k => k.nama_sampah), datasets: [{ data: [45, 25, 20, 10], backgroundColor: dbDummy.kategori.map(k => k.warna), borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: true, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: {family: "'Segoe UI', sans-serif", weight: 'bold'} } } } } }); }
+        if(ctx) { 
+            if(myChart) myChart.destroy(); 
+            // Cek apakah data kosong semua, jika ya, isi sedikit visual statis agar chart tidak hilang
+            let isEmpty = pData.every(item => item === 0);
+            let displayData = isEmpty ? [1, 1, 1, 1] : pData; 
+            
+            myChart = new Chart(ctx, { 
+                type: 'doughnut', 
+                data: { 
+                    labels: ['Botol', 'Kardus', 'Kaleng', 'Logam'], 
+                    datasets: [{ 
+                        data: displayData, 
+                        backgroundColor: isEmpty ? ['#e5e7eb', '#e5e7eb', '#e5e7eb', '#e5e7eb'] : ['#3b82f6', '#eab308', '#ef4444', '#8b5cf6'], 
+                        borderWidth: 0 
+                    }] 
+                }, 
+                options: { 
+                    responsive: true, maintainAspectRatio: true, cutout: '70%', 
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: {family: "'Segoe UI', sans-serif", weight: 'bold'} } },
+                        tooltip: { callbacks: { label: function(context) { return isEmpty ? ' Belum ada data' : ' ' + context.parsed + ' Kg'; } } }
+                    } 
+                } 
+            }); 
+        }
     }
 
     async function loadAdminDashboard() { let res = await apiCall({action: 'getAdminDashboard'}); if(res.status === 'success') { document.getElementById('dash-tot-nasabah').innerText = res.data.totNasabah; document.getElementById('dash-tot-kg').innerText = res.data.totKg + " Kg"; } }
-    async function loadTransaksiGlobal() { let res = await apiCall({action: 'getTransaksiData'}); if(res.status === 'success') { currentTransaksiGlobal = res.transaksi; document.getElementById('tabel-transaksi-global').innerHTML = res.transaksi.map(t => `<tr class="border-b border-gray-50"><td class="p-4 text-gray-500">${t.tanggal}</td><td class="p-4 font-bold text-gray-800">${res.nasabah.find(x => x.id_user === t.id_user)?.nama || 'Unknown'}</td><td class="p-4 text-gray-600">${t.rincian}</td><td class="p-4 text-right font-black text-emerald-600">${t.nominal} Kg</td></tr>`).join('') || '<tr><td colspan="4" class="p-4 text-center text-gray-400">Data kosong</td></tr>'; } }
-    async function loadNasabahDashboard() { document.getElementById('nasabah-nama-kartu').innerText = currentUser.nama; let res = await apiCall({action: 'getNasabahDashboard', id_user: currentUser.id_user}); if(res.status === 'success') { document.getElementById('nasabah-saldo').innerText = res.data.total_kg; currentTransaksiPribadi = res.data.transaksi; document.getElementById('tabel-transaksi-pribadi').innerHTML = res.data.transaksi.map(t => `<tr class="border-b border-gray-50"><td class="p-4 text-gray-500">${t.tanggal}</td><td class="p-4 text-gray-600">${t.rincian}</td><td class="p-4 text-right font-black text-emerald-600">${t.nominal} Kg</td></tr>`).join('') || '<tr><td colspan="3" class="p-4 text-center text-gray-400">Data kosong</td></tr>'; } }
+    async function loadTransaksiGlobal() { let res = await apiCall({action: 'getTransaksiData'}); if(res.status === 'success') { currentTransaksiGlobal = res.transaksi; document.getElementById('tabel-transaksi-global').innerHTML = res.transaksi.map(t => `<tr class="border-b border-gray-50"><td class="p-4 text-gray-500">${t.tanggal}</td><td class="p-4 font-bold text-gray-800">${res.nasabah.find(x => x.id_user === t.id_user)?.nama || 'Unknown'}</td><td class="p-4 text-gray-600">${t.rincian}</td><td class="p-4 text-right font-black text-emerald-600">${t.nominal} Kg</td></tr>`).join('') || '<tr><td colspan="4" class="p-4 text-center text-gray-400">Belum ada transaksi</td></tr>'; } }
+    async function loadNasabahDashboard() { document.getElementById('nasabah-nama-kartu').innerText = currentUser.nama; let res = await apiCall({action: 'getNasabahDashboard', id_user: currentUser.id_user}); if(res.status === 'success') { document.getElementById('nasabah-saldo').innerText = res.data.total_kg; currentTransaksiPribadi = res.data.transaksi; document.getElementById('tabel-transaksi-pribadi').innerHTML = res.data.transaksi.map(t => `<tr class="border-b border-gray-50"><td class="p-4 text-gray-500">${t.tanggal}</td><td class="p-4 text-gray-600">${t.rincian}</td><td class="p-4 text-right font-black text-emerald-600">${t.nominal} Kg</td></tr>`).join('') || '<tr><td colspan="3" class="p-4 text-center text-gray-400">Belum ada transaksi</td></tr>'; } }
 
     function exportToPDF(type) {
         const { jsPDF } = window.jspdf; const doc = new jsPDF();
@@ -274,6 +316,8 @@
         doc.setFontSize(10); doc.setTextColor(0); doc.text("Balikpapan, " + tglCetak, 130, finalY + 20); doc.text("Pengurus Eco Bank,", 130, finalY + 26); doc.text("( _____________________ )", 125, finalY + 50);
         doc.save(`Laporan_EcoBank_${type}_${Date.now()}.pdf`); showToast("PDF berhasil diunduh!");
     }
+    
+    // TAMPILKAN HALAMAN AWAL SAAT PERTAMA KALI DIBUKA
     window.onload = () => { showPage('landing'); }
 </script>
 </body>
