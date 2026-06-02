@@ -538,6 +538,10 @@
             let query = await db.collection("users").where("username", "==", u).where("password", "==", p).get();
             if (!query.empty) {
                 let doc = query.docs[0]; currentUser = { id_user: doc.id, ...doc.data() };
+                
+                // --- SIMPAN SESI KE LOCAL STORAGE ---
+                localStorage.setItem('ecoBankUserSession', JSON.stringify(currentUser));
+                
                 document.getElementById('user-name-display').innerText = currentUser.nama;
                 document.getElementById('user-role-display').innerText = currentUser.role;
                 hideLoginModal(); showToast("Selamat datang, " + currentUser.nama);
@@ -552,7 +556,15 @@
         showLoading(false);
     }
 
-    function handleLogout() { currentUser = null; showPage('landing'); showToast("Berhasil keluar."); }
+    function handleLogout() { 
+        currentUser = null; 
+        
+        // --- HAPUS SESI DARI LOCAL STORAGE SAAT LOGOUT ---
+        localStorage.removeItem('ecoBankUserSession');
+        
+        showPage('landing'); 
+        showToast("Berhasil keluar."); 
+    }
 
     async function submitNasabahBaru(e) {
         e.preventDefault(); showLoading(true);
@@ -822,7 +834,25 @@
         doc.save(`Laporan_Eco_Bank_${type}_${Date.now()}.pdf`); showToast("PDF berhasil diunduh!");
     }
 
-    window.onload = () => { showPage('landing'); initFirebaseData(); };
+    window.onload = () => { 
+        // --- CEK SESSION LOCAL STORAGE ---
+        let savedSession = localStorage.getItem('ecoBankUserSession');
+        if (savedSession) {
+            currentUser = JSON.parse(savedSession);
+            document.getElementById('user-name-display').innerText = currentUser.nama;
+            document.getElementById('user-role-display').innerText = currentUser.role;
+            
+            document.getElementById('menu-admin').classList.add('hidden-force');
+            document.getElementById('menu-nasabah').classList.add('hidden-force');
+            document.getElementById(currentUser.role === 'Admin' ? 'menu-admin' : 'menu-nasabah').classList.remove('hidden-force');
+            
+            navigate('auto'); // Langsung buka halaman dashboard tanpa melihat landing page
+        } else {
+            showPage('landing'); 
+        }
+        
+        initFirebaseData(); 
+    };
 </script>
 </body>
 </html>
