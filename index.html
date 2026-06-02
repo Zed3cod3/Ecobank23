@@ -681,7 +681,11 @@
         
         if (role === 'admin') {
             document.getElementById('wrap-nasabah').classList.remove('hidden-force');
-            document.getElementById('trx-user').innerHTML = globalNasabahList.map(n => `<option value="${n.id_user}">${n.nama}</option>`).join('');
+            
+            // Mengurutkan daftar kelas (7a, 7b, dst) secara alfabetis sebelum ditampilkan
+            let sortedKelas = [...globalNasabahList].sort((a, b) => a.username.localeCompare(b.username));
+            
+            document.getElementById('trx-user').innerHTML = sortedKelas.map(n => `<option value="${n.id_user}">${n.nama}</option>`).join('');
         } else {
             document.getElementById('wrap-nasabah').classList.add('hidden-force');
             document.getElementById('trx-user').innerHTML = `<option value="${currentUser.id_user}">${currentUser.nama}</option>`;
