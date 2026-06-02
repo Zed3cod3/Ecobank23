@@ -38,7 +38,7 @@
 
     <!-- NAVBAR LANDING -->
     <nav id="navbar-landing" class="fixed top-0 left-0 w-full glass-card z-50 transition-all duration-300 border-b border-gray-100 shadow-sm">
-        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between relative">
             <div class="flex items-center gap-3">
                 <img src="https://i.ibb.co.com/mV7Qr7Fw/logo.png" alt="Logo SMPN 23" class="h-10 w-10 object-contain drop-shadow-sm">
                 <div>
@@ -46,6 +46,13 @@
                     <p class="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5">SMPN 23 Balikpapan</p>
                 </div>
             </div>
+            
+            <!-- CENTER TEXT -->
+            <div class="hidden lg:flex flex-col items-center justify-center absolute left-1/2 transform -translate-x-1/2">
+                <h2 class="text-xs font-black text-emerald-500 tracking-[0.2em] uppercase">Spenduga Hebat</h2>
+                <p class="text-[8px] text-gray-400 mt-0.5 tracking-wider font-semibold">[ Honest, Excellent, Better, Attentive, Thankfull ]</p>
+            </div>
+
             <div>
                 <button id="btn-nav-login" onclick="showLoginModal()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2"><i class="fa-solid fa-right-to-bracket"></i> Masuk Sistem</button>
                 <button id="btn-nav-dashboard" onclick="navigate('auto')" class="hidden-force bg-teal-600 hover:bg-teal-700 text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-md shadow-teal-500/30 transition-all items-center gap-2"><i class="fa-solid fa-gauge-high"></i> Dashboard</button>
