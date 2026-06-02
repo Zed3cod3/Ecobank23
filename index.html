@@ -361,8 +361,17 @@
     let currentTransaksiGlobal = [];
     let currentTransaksiPribadi = [];
     let myChart = null;
-    let globalNasabahList = [];
     let deleteTargetId = null;
+
+    // GENERATE KELAS SEBAGAI PLACEHOLDER (Agar Peringkat langsung muncul meski loading)
+    const klsArray = ['7a','7b','7c','7d','7e','7f','8a','8b','8c','8d','8e','8f','9a','9b','9c','9d','9e','9f'];
+    let globalNasabahList = klsArray.map(k => ({
+        id_user: 'tmp_' + k,
+        username: k,
+        nama: 'Kelas ' + k.toUpperCase(),
+        role: 'Nasabah',
+        total_kg: 0
+    }));
 
     // FUNGSI LOADING YANG SANGAT KUAT (Tidak bisa digagalkan Tailwind)
     function showLoading(show) {
@@ -394,24 +403,47 @@
         }, 8000);
 
         try {
-            // A. Auto-Seed (Buat Akun Otomatis Jika Kosong)
+            // A. Auto-Seed (Buat Akun Otomatis & Paksa Perbarui jika salah)
             let usersSnap = await db.collection("users").get();
-            if (usersSnap.empty) {
-                document.getElementById('loading-text').innerText = "Membuat Database Baru...";
-                await db.collection("users").add({ username: 'admin', password: 'edudigital', role: 'Admin', nama: 'Administrator' });
-                
-                const kls = ['7a','7b','7c','7d','7e','7f','8a','8b','8c','8d','8e','8f','9a','9b','9c','9d','9e','9f'];
-                for(let k of kls) {
+            let needsRefresh = false;
+
+            // 1. Cek Admin
+            let adminDoc = usersSnap.docs.find(doc => doc.data().username === 'admin');
+            if (!adminDoc) {
+                await db.collection("users").add({ username: 'admin', password: 'admin', role: 'Admin', nama: 'Administrator' });
+                needsRefresh = true;
+            } else if (adminDoc.data().password !== 'admin') {
+                // PAKSA GANTI JIKA PASSWORD BUKAN 'admin'
+                await db.collection("users").doc(adminDoc.id).update({ password: 'admin' });
+                needsRefresh = true;
+            }
+
+            // 2. Cek Kelas 7a-9f
+            for(let k of klsArray) {
+                let classDoc = usersSnap.docs.find(doc => doc.data().username === k);
+                if(!classDoc) {
                     await db.collection("users").add({ username: k, password: k+'123', role: 'Nasabah', nama: 'Kelas ' + k.toUpperCase() });
+                    needsRefresh = true;
+                } else {
+                    // Pastikan password persis <kelas>123 dan rolenya 'Nasabah'
+                    if (classDoc.data().password !== k+'123' || classDoc.data().role !== 'Nasabah') {
+                        await db.collection("users").doc(classDoc.id).update({ password: k+'123', role: 'Nasabah' });
+                        needsRefresh = true;
+                    }
                 }
-                usersSnap = await db.collection("users").get(); // Refresh
+            }
+
+            if (needsRefresh) {
+                usersSnap = await db.collection("users").get(); // Refresh Data User
             }
             
-            // Simpan Data User ke Memori Lokal
+            // Simpan Data User ke Memori Lokal secara valid
             globalNasabahList = [];
             usersSnap.forEach(doc => {
                 let d = doc.data();
-                if(d.role === 'Nasabah') globalNasabahList.push({ id_user: doc.id, ...d, total_kg: 0 });
+                if(d.role === 'Nasabah') {
+                    globalNasabahList.push({ id_user: doc.id, ...d, total_kg: 0 });
+                }
             });
 
             // B. Real-Time Listener Transaksi
@@ -429,8 +461,9 @@
                     n.total_kg = txUser.reduce((sum, t) => sum + parseFloat(t.nominal), 0);
                 });
 
-                // Perbarui UI
+                // Perbarui UI Utama
                 renderLandingData();
+
                 if(currentUser) {
                     if (currentUser.role === 'Admin') {
                         loadAdminDashboard(); 
@@ -517,6 +550,7 @@
                 data: { 
                     labels: ['Botol', 'Kardus', 'Kaleng', 'Logam'], 
                     datasets: [{ 
+                        // Tampilkan full abu-abu jika belum ada data sama sekali
                         data: isEmpty ? [1,1,1,1] : pData, 
                         backgroundColor: isEmpty ? ['#e5e7eb', '#e5e7eb', '#e5e7eb', '#e5e7eb'] : ['#3b82f6', '#eab308', '#ef4444', '#8b5cf6'], 
                         borderWidth: 0 
@@ -532,10 +566,10 @@
             }); 
         }
 
-        // Update Leaderboard
+        // Update Leaderboard - Selalu tampilkan Top 5 walaupun Kg nya 0
         let top5 = [...globalNasabahList].sort((a,b) => b.total_kg - a.total_kg).slice(0,5);
+        
         let boardHtml = top5.map((u, i) => {
-            if(u.total_kg === 0) return ''; // Jangan tampilkan jika 0
             return `
             <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
                 <div class="flex items-center gap-4">
@@ -544,11 +578,11 @@
                     </div>
                     <span class="font-bold text-gray-800">${u.nama}</span>
                 </div>
-                <span class="font-black text-emerald-600 bg-emerald-100 px-3 py-1 rounded-lg text-sm">${u.total_kg.toFixed(1)} Kg</span>
+                <span class="font-black text-emerald-600 bg-emerald-100 px-3 py-1 rounded-lg text-sm">${(u.total_kg || 0).toFixed(1)} Kg</span>
             </div>
             `;
         }).join('');
-        document.getElementById('leaderboard-container').innerHTML = boardHtml || '<div class="text-center p-4 text-gray-400">Belum ada data setoran.</div>';
+        document.getElementById('leaderboard-container').innerHTML = boardHtml;
     }
 
     function loadAdminDashboard() {
@@ -736,6 +770,7 @@
     // =========================================================
     window.onload = () => {
         showPage('landing');
+        renderLandingData(); // Render instan meskipun Firebase belum selesai loading
         initFirebaseData();
     };
 </script>
